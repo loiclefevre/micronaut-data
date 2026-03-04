@@ -352,7 +352,17 @@ public class MappedEntityVisitor implements TypeElementVisitor<MappedEntity, Obj
         // Traverse all persistent properties (including identity) and collect @ETagValue columns or implicitly included ones.
         // This handles embedded paths and association FKs consistently with the rest of the project.
         PersistentEntityUtils.traversePersistentProperties(entity, true, false, (associations, property) -> {
-            boolean explicit = property.getAnnotationMetadata().hasAnnotation(ETagValue.class);
+            boolean excludedByAssociationPath = associations.stream()
+                .anyMatch(association -> association.getAnnotationMetadata().booleanValue(ETagValue.class, "exclude").orElse(false));
+            if (excludedByAssociationPath) {
+                return;
+            }
+            AnnotationMetadata metadata = property.getAnnotationMetadata();
+            boolean excluded = metadata.booleanValue(ETagValue.class, "exclude").orElse(false);
+            if (excluded) {
+                return;
+            }
+            boolean explicit = metadata.hasAnnotation(ETagValue.class);
             boolean implicit = entityEtaggable && ImplicitEtagUtils.isImplicitEtagEligible(entity, associations, property, etagProp, includeForeignKeys);
             if (explicit || implicit) {
                 String column = entity.getNamingStrategy().mappedName(associations, property);
@@ -363,6 +373,11 @@ public class MappedEntityVisitor implements TypeElementVisitor<MappedEntity, Obj
         // Implicit include for owning-side FKs that traversal skips
         if (entityEtaggable && includeForeignKeys) {
             for (SourcePersistentProperty p : properties) {
+                AnnotationMetadata metadata = p.getAnnotationMetadata();
+                boolean excluded = metadata.booleanValue(ETagValue.class, "exclude").orElse(false);
+                if (excluded) {
+                    continue;
+                }
                 if (p instanceof io.micronaut.data.model.Association assoc && !(assoc instanceof io.micronaut.data.model.Embedded)) {
                     io.micronaut.data.annotation.Relation.Kind k = assoc.getKind();
                     if (k == io.micronaut.data.annotation.Relation.Kind.MANY_TO_ONE || k == io.micronaut.data.annotation.Relation.Kind.ONE_TO_ONE) {
@@ -375,9 +390,14 @@ public class MappedEntityVisitor implements TypeElementVisitor<MappedEntity, Obj
 
         // Handle explicit @ETagValue placed on owning-side FK associations which are skipped by traversal
         for (SourcePersistentProperty p : properties) {
-            if (p.getAnnotationMetadata().hasAnnotation(ETagValue.class)) {
+            AnnotationMetadata metadata = p.getAnnotationMetadata();
+            boolean excluded = metadata.booleanValue(ETagValue.class, "exclude").orElse(false);
+            if (excluded) {
+                continue;
+            }
+            if (metadata.hasAnnotation(ETagValue.class)) {
                 // If explicit on a relation, validate it's either embedded or an owning-side FK
-                if (p.getAnnotationMetadata().hasAnnotation(io.micronaut.data.annotation.Relation.class)) {
+                if (metadata.hasAnnotation(io.micronaut.data.annotation.Relation.class)) {
                     var kind = p.enumValue(io.micronaut.data.annotation.Relation.class, "value", io.micronaut.data.annotation.Relation.Kind.class).orElse(null);
                     if (kind == io.micronaut.data.annotation.Relation.Kind.ONE_TO_MANY || kind == io.micronaut.data.annotation.Relation.Kind.MANY_TO_MANY) {
                         throw new ProcessingException(p, "Explicit @ETagValue on non-embedded, non-foreign-key association is not supported");

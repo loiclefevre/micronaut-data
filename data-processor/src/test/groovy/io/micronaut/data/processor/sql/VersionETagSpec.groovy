@@ -96,6 +96,17 @@ record MyEntity(@Id @GeneratedValue Long id,
         then:
         readExpr.contains("@.other_id")
     }
+
+    void "includeForeignKeys honors exclude=true on association field"() {
+        when:
+        def entity = PersistentEntity.of(FkEntityExcludeAssociation)
+        def etag = entity.getPropertyByName("etag")
+        def readExpr = etag.annotationMetadata.stringValue(ColumnTransformer, "read")
+            .orElseGet(() -> etag.annotationMetadata.stringValue(DataTransformer, "read").orElse(""))
+
+        then:
+        !readExpr.contains("@.other_id")
+    }
 }
 
 @MappedEntity
@@ -103,8 +114,24 @@ record MyEntity(@Id @GeneratedValue Long id,
 class FkEntity {
     @Id
     @GeneratedValue
+    @ETagValue
     Long id
 
+    @Relation(Relation.Kind.MANY_TO_ONE)
+    Other other
+
+    @GeneratedEtag(function = "SYS_ROW_ETAG")
+    String etag
+}
+
+@MappedEntity
+@Etaggable(includeForeignKeys = true)
+class FkEntityExcludeAssociation {
+    @Id
+    @GeneratedValue
+    Long id
+
+    @ETagValue(exclude = true)
     @Relation(Relation.Kind.MANY_TO_ONE)
     Other other
 

@@ -42,4 +42,11 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Target({FIELD, METHOD})
 @Retention(RUNTIME)
 public @interface ETagValue {
+
+    /**
+     * If true, the annotated field is excluded from ETag computation.
+     *
+     * @return True if field should be excluded
+     */
+    boolean exclude() default false;
 }
