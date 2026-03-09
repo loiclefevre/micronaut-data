@@ -387,6 +387,9 @@ public class MappedEntityVisitor implements TypeElementVisitor<MappedEntity, Obj
 
         AnnotationMetadata etagMetadata = etagProp.getAnnotationMetadata();
         String function = etagMetadata.stringValue(GeneratedEtag.class, "function").orElse("");
+        if (function.isEmpty()) {
+            function = GeneratedEtag.DIALECT_DEFAULT_FUNCTION_MARKER;
+        }
 
         boolean entityEtaggable = entity.getType().hasStereotype(Etaggable.class);
         boolean includeForeignKeys = entity.getType().booleanValue(Etaggable.class, "includeForeignKeys").orElse(false);

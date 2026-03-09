@@ -40,6 +40,12 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Target({FIELD, METHOD})
 @Retention(RUNTIME)
 public @interface GeneratedEtag {
+
+    /**
+     * Internal marker used by annotation processing when function resolution is deferred to SQL dialect handling.
+     */
+    String DIALECT_DEFAULT_FUNCTION_MARKER = "__MICRONAUT_DATA_DIALECT_DEFAULT_ETAG_FUNCTION__";
+
     /**
      * The SQL function name to compute the ETag (e.g. {@code SYS_ROW_ETAG}) using values
      * annotated by {@link ETagValue} or implicitly included via {@link Etaggable}.

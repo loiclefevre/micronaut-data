@@ -1232,6 +1232,10 @@ public abstract class AbstractSqlLikeQueryBuilder implements QueryBuilder {
         if (defaultFunction == null) {
             throw new IllegalStateException("@GeneratedEtag requires explicit 'function' for dialect " + getDialect());
         }
+        String markerPrefix = GeneratedEtag.DIALECT_DEFAULT_FUNCTION_MARKER + "(";
+        if (value.startsWith(markerPrefix)) {
+            return defaultFunction + value.substring(GeneratedEtag.DIALECT_DEFAULT_FUNCTION_MARKER.length());
+        }
         if (value.startsWith("(")) {
             return defaultFunction + value;
         }
