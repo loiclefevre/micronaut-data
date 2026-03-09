@@ -1215,7 +1215,35 @@ public abstract class AbstractSqlLikeQueryBuilder implements QueryBuilder {
     private Optional<String> getDataTransformerValue(@Nullable String alias, PersistentProperty prop, String val) {
         return prop.getAnnotationMetadata()
             .stringValue(DataTransformer.class, val)
-            .map(v -> replaceAlias(alias, v));
+            .map(v -> resolveGeneratedEtagFunction(prop, replaceAlias(alias, v)));
+    }
+
+    private String resolveGeneratedEtagFunction(PersistentProperty prop, String value) {
+        if (!prop.getAnnotationMetadata().hasAnnotation(GeneratedEtag.class)) {
+            return value;
+        }
+        String function = prop.getAnnotationMetadata()
+            .stringValue(GeneratedEtag.class, "function")
+            .orElse("");
+        if (!function.isEmpty()) {
+            return value;
+        }
+        String defaultFunction = getDefaultEtagFunction();
+        if (defaultFunction == null) {
+            throw new IllegalStateException("@GeneratedEtag requires explicit 'function' for dialect " + getDialect());
+        }
+        if (value.startsWith("(")) {
+            return defaultFunction + value;
+        }
+        return value;
+    }
+
+    @Nullable
+    private String getDefaultEtagFunction() {
+        if (getDialect() == Dialect.ORACLE) {
+            return "SYS_ROW_ETAG";
+        }
+        return null;
     }
 
     private String replaceAlias(@Nullable String alias, String v) {

@@ -17,7 +17,7 @@ public record ETagBookExplicit(
     @Relation(Relation.Kind.EMBEDDED)
     BookDetails bookDetails,
 
-    @GeneratedEtag(function = "SYS_ROW_ETAG")
+    @GeneratedEtag
     String etag
 ) {
     @Embeddable

@@ -43,8 +43,11 @@ public @interface GeneratedEtag {
     /**
      * The SQL function name to compute the ETag (e.g. {@code SYS_ROW_ETAG}) using values
      * annotated by {@link ETagValue} or implicitly included via {@link Etaggable}.
+     * <p>
+     * If not specified, the function may be resolved from the SQL dialect at query-build time.
+     * Currently, Oracle defaults to {@code SYS_ROW_ETAG}; other dialects require an explicit function.
      *
      * @return function name
      */
-    String function();
+    String function() default "";
 }

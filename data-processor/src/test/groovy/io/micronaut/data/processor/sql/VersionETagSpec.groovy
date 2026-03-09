@@ -16,6 +16,7 @@ import io.micronaut.data.annotation.DataTransformer
 import io.micronaut.data.annotation.sql.GeneratedEtag
 import io.micronaut.data.annotation.sql.ETagValue
 import io.micronaut.data.model.PersistentEntity
+import io.micronaut.data.model.query.builder.sql.Dialect
 import io.micronaut.data.model.query.builder.sql.SqlQueryBuilder
 import io.micronaut.data.annotation.MappedEntity
 import io.micronaut.data.annotation.Id
@@ -51,6 +52,48 @@ class VersionETagSpec extends AbstractDataSpec {
         etag.annotationMetadata.hasAnnotation(Version)
         etag.annotationMetadata.hasAnnotation(GeneratedValue)
         etag.annotationMetadata.stringValue(ColumnTransformer, "read").get() == 'SYS_ROW_ETAG(@.id, @.title)'
+    }
+
+    void "missing function uses Oracle dialect default"() {
+        when:
+        def query = builder.createCriteriaUpdate(ETagBookNoFunction)
+        def root = query.from(ETagBookNoFunction)
+        def sql = query
+            .set("title", builder.parameter(String))
+            .where(builder.equal(root.get("etag"), builder.parameter(String)))
+            .build(new SqlQueryBuilder(Dialect.ORACLE))
+            .query
+
+        then:
+        sql == 'UPDATE "BOOK_NO_FUNCTION" SET "TITLE"=? WHERE (SYS_ROW_ETAG(id, title) = ?)'
+    }
+
+    void "missing function fails for MySQL"() {
+        when:
+        def query = builder.createCriteriaUpdate(ETagBookNoFunction)
+        def root = query.from(ETagBookNoFunction)
+        query
+            .set("title", builder.parameter(String))
+            .where(builder.equal(root.get("etag"), builder.parameter(String)))
+            .build(new SqlQueryBuilder(Dialect.MYSQL))
+
+        then:
+        def ex = thrown(IllegalStateException)
+        ex.message.contains("@GeneratedEtag requires explicit 'function' for dialect MYSQL")
+    }
+
+    void "explicit function works for MySQL"() {
+        when:
+        def query = builder.createCriteriaUpdate(ETagBook)
+        def root = query.from(ETagBook)
+        def sql = query
+            .set("title", builder.parameter(String))
+            .where(builder.equal(root.get("etag"), builder.parameter(String)))
+            .build(new SqlQueryBuilder(Dialect.MYSQL))
+            .query
+
+        then:
+        sql == 'UPDATE `book` SET `title`=? WHERE (SYS_ROW_ETAG(id, title) = ?)'
     }
 
     void "test @GeneratedEtag with @Version field in the entity"() {
@@ -155,5 +198,16 @@ class ETagBook {
     @ETagValue
     String title
     @GeneratedEtag(function = "SYS_ROW_ETAG")
+    String etag
+}
+
+@MappedEntity("book_no_function")
+class ETagBookNoFunction {
+    @ETagValue
+    @Id
+    Long id
+    @ETagValue
+    String title
+    @GeneratedEtag
     String etag
 }

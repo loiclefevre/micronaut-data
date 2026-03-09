@@ -16,3 +16,23 @@ snippet::example.Student[project-base="doc-examples/hibernate-example", source="
 It's possible to use ann:data.annotation.Version[] in a partial update or a delete method, in this case the version needs to match the version of the stored record.
 
 snippet::example.StudentRepository[project-base="doc-examples/hibernate-example", source="main", tags="studentRepository", indent="0"]
+
+For SQL dialects, you can also compute optimistic locking values with ann:io.micronaut.data.annotation.sql.GeneratedEtag[] and ann:io.micronaut.data.annotation.sql.ETagValue[].
+
+[source,java]
+----
+@MappedEntity
+class Book {
+    @ETagValue
+    @Id
+    Long id;
+
+    @ETagValue(exclude = true)
+    String title;
+
+    @GeneratedEtag
+    String etag;
+}
+----
+
+When `function` is omitted on `@GeneratedEtag`, Micronaut Data resolves it from the SQL dialect at query-build time. Oracle defaults to `SYS_ROW_ETAG`; for other dialects you must provide an explicit function value.
